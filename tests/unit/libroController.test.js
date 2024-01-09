@@ -18,13 +18,16 @@ const {
     });
 
     test("getLibros debería obtener todos los libros", async () => {
+        //Crea un array con objetos ficticios
     const mockLibros = [
     { id: "1", title: "Libro 1" },
     { id: "2", title: "Libro 2" },
     ];
-
+    //Configura la funcion "libroModel.find" para que cuando sea llamada se resuelva con la variable ficticia 
     libroModel.find.mockResolvedValue(mockLibros);
+    //Creamos un objeto vacio ya que el req de la funcion no nos pide como requisito ningun parametro
     const mockReq = {};
+    
     await getAllLibros(mockReq, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith(mockLibros);
@@ -65,7 +68,7 @@ const {
     const libroActualizado = { titulo: 'Libro Actualizado', autor: 'Autor Actualizado' };
         //info del libro ya actualizado para utilizarlo en el expect al final
     const libroActualizadoMock = { _id: libroId, ...libroActualizado };
-        //configura a la funcion  "libroModel.findByIdAndUpdate" para que se resuelva con la variable ficticia
+        //configura a la funcion  "libroModel.findByIdAndUpdate" para que se resuelva con la variable ficticia cuando sea llamada
     libroModel.findByIdAndUpdate.mockResolvedValue(libroActualizadoMock);
         //crea el request que se utilizara en la funcion con el id y la informacion del nuevo libro
     const mockReq = { params: { id: libroId }, body: libroActualizado };
@@ -95,10 +98,11 @@ const {
 
 
     test("deleteLibro debería eliminar un libro existente", async () => {
+        //Creamos un objeto  con atributos titulo y autor 
     const mockLibroEliminado = { titulo: 'Libro Eliminado', autor: 'Autor Eliminado' };
-
+        //Configuramos la funcion " libroModel.findByIdAndRemove" para que cuando se llame a al funcion me arroje la variable ficticia
     libroModel.findByIdAndRemove.mockResolvedValue(mockLibroEliminado);
-
+        //creamos el request para nuestra funcion(un objeto con el atributo id)
     const mockReq = { params: { id: "1" } };
 
     await deleteLibro(mockReq, mockRes);
