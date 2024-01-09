@@ -14,7 +14,7 @@ router.get("/", requiredScopes("read:biblioteca"), getAllLibros);
 router.get("/:id", requiredScopes("read:biblioteca"), getLibroById);
 
 // Ruta para crear un nuevo Libro
-router.post("/", requiredScopes("write:biblioteca"), createLibro);
+router.post("/", requiredScopes("read:biblioteca"), createLibro);
 
 // Ruta para actualizar un Libro existente
 router.put("/:id", requiredScopes("write:biblioteca"), updateLibro);

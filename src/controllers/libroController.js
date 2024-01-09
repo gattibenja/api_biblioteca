@@ -12,9 +12,9 @@ exports.getAllLibros = async (req, res) => {
 exports.getLibroById = async (req, res) => {
   try {
     const libro = await Libro.findById(req.params.id);
-    if (!libro) {
-      return res.status(404).json({ error: "Libro no encontrado" });
-    }
+    //if (!libro) {
+     // return res.status(404).json({ error: "Libro no encontrado" });
+    //}
     res.status(200).json(libro);
   } catch (error) {
     res.status(500).json({ error: "Error al obtener el Libro" });
