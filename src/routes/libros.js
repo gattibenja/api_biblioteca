@@ -20,6 +20,6 @@ router.post("/", requiredScopes("read:biblioteca"), createLibro);
 router.put("/:id", requiredScopes("write:biblioteca"), updateLibro);
 
 // Ruta para eliminar un Libro
-router.delete("/:id", requiredScopes("write:biblioteca"), deleteLibro);
+router.delete("/:id", requiredScopes("read:biblioteca"), deleteLibro);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require("express");
-
+ 
+require("dotenv").config();
 const { auth } = require('express-oauth2-jwt-bearer');
 const errorHandler = require("./middlewares/errorHandler");
 

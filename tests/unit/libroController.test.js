@@ -8,10 +8,15 @@ const {
     const libroModel = require("../../src/models/libroModel");
     jest.mock("../../src/models/libroModel");
     
+    //Agrupamos los tests unitarios con describe
     describe("Libro Controller", () => {
+    //Declaramos el objeto response que utilizaremos en cada prueba o funcion
     let mockRes;
+    //Bloque que hara que antes de cada ejecucion de test se limpie el status y json de la prueba anterior, el uso de jest.fn sirve para el rastreo de el json y el status y este permitira usarlo con el expect para esperar ciertos resultados mas adelante
     beforeEach(() => {
     mockRes = {
+        //jest.fn() hace un  seguimiento de el uso de una funcion y de las variables y sus valores. Y "mockrReturnThis" nos permite encadenar metodos,en nuestro caso status se usara despues de json y son 2 funciones que se encadenan
+        //el mockReturnThis se utiliza para poder encadenar funciones en este caso status y json
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
     };
@@ -27,18 +32,20 @@ const {
     libroModel.find.mockResolvedValue(mockLibros);
     //Creamos un objeto vacio ya que el req de la funcion no nos pide como requisito ningun parametro
     const mockReq = {};
-    
+
     await getAllLibros(mockReq, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith(mockLibros);
     });
 
     test("getLibroById debería obtener un libro", async () => {
-
+        //Creamos un objeto como los atributos id, titulo y autor
     const mockLibro = { id: "1", titulo: "Libro Encontrado", autor: "Juan Perez" };
-
+        //Configuramos que cuando la funcion "libroModel.findById" sea llamada se ejecute con el valor de la variable ficticia
     libroModel.findById.mockResolvedValue(mockLibro);
+    //Creamos el request de la funcion(params.id = "1")
     const mockReq = { params: { id: "1" } };
+    
     await getLibroById(mockReq, mockRes);
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith(mockLibro);
