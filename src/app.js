@@ -1,16 +1,12 @@
+require('dotenv').config();
 const express = require("express");
- 
-require("dotenv").config();
 const { auth } = require('express-oauth2-jwt-bearer');
 const errorHandler = require("./middlewares/errorHandler");
 
-
-require('dotenv').config();
-
 // Configuracion Middleware con el Servidor de Autorización 
 const autenticacion = auth({
-  audience: 'http://127.0.0.1:3000/api/biblioteca',
-  issuerBaseURL: 'https://dev-1wiwlq6rqe4niuk7.us.auth0.com/',
+  audience: process.env.OAUTH_AUDIENCE,
+  issuerBaseURL: process.env.OAUTH_URL,
   tokenSigningAlg: 'RS256'
 });
 
@@ -20,12 +16,24 @@ app.use(express.json());
 // Importamos el Router de Libros
 const librosRouter = require("./routes/libros");
 
+// Ruta base
+app.get("/", (req, res) => {
+  res.send("API de productos");
+});
+
+
+// Ruta base
+app.get("/health", (req, res) => {
+  res.send("OK");
+});
+
 //Configuramos el middleware de autenticacion
 app.use("/libros", autenticacion,  librosRouter);
 
 app.use(errorHandler);
 
 app.listen(3000, () => {
+  console.log(process.env.MONGO_DB)
   console.log("Servidor iniciado en el puerto 3000");
 });
 

@@ -1,0 +1,39 @@
+version: '3'
+services: #servicios de la API
+  api: 
+    container_name: api-biblioteca
+    build: . #ubicacion del dockerfile
+    ports: 
+      - "3000:3000" #puerto de escucha
+      #dependencias
+    depends_on: 
+      - mongodb
+    healthcheck:
+      test : "curl -f http://localhost:3000/ || exit 1"
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+    environment:
+      MONGO_DB: "mongodb://mongodb:27017/biblioteca"
+      OAUTH_AUDIENCE: http://127.0.0.1:3000/api/biblioteca
+      OAUTH_URL: https://dev-1wiwlq6rqe4niuk7.us.auth0.com/
+  # Servicio de mongo
+  mongodb : 
+    image : mongo:latest # Utilizamos la imagen oficial de mongo desde docker hub
+    ports : 
+      - "27017:27017"
+    healthcheck:
+      test: "mongosh --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 1)'"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes : 
+     - mongo_data:/data/db
+
+volumes:
+  mongo_data : #definimos el volumen para mongo
+
+ 
+
+

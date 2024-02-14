@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: container on ecs cluster
+
+Resources:
+  Task: # Recurso que define los contenedores y sus propiedades
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: 1024
+      Memory: 2048
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: 'arn:aws:iam::767397845532:role/LabRole'  
+      ContainerDefinitions:
+        - Name: api-libros
+          Image: "767397845532.dkr.ecr.us-east-1.amazonaws.com/api-biblioteca:latest"    
+          Cpu: 512
+          Memory: 1024
+          PortMappings:
+            - ContainerPort: 3000
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "/data/api-libros"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: "api"
+          DependsOn: 
+            - ContainerName: mongodb
+              Condition: HEALTHY
+          Essential: true
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+            Interval: 30 # Intervalo entre comprobaciones de salud en segundos
+            Timeout: 5 # Tiempo máximo en segundos permitido para una comprobación de salud
+            Retries: 3 # Número de veces que se realizará la comprobación antes de declarar el contenedor como no saludable
+            StartPeriod: 90 # Tiempo en segundos para esperar antes de comenzar las comprobaciones de salud después del inicio del contenedor
+          Environment:
+            - Name: MONGO_URL
+              Value: "mongodb://127.0.0.1:27017/biblioteca" # Configura la URL de conexión para tu base de datos
+            - Name: OAUTH_AUDIENCE
+              Value: "http://127.0.0.1:3000/api/biblioteca" # Configura la URL de conexión para tu base de datos
+            - Name: OAUTH_URL
+              Value: "https://dev-1wiwlq6rqe4niuk7.us.auth0.com/" # Configura la URL de conexión para tu base de datos
+        - Name: mongodb
+          Image: "mongo:latest" # Asegúrate de utilizar la imagen de MongoDB adecuada
+          Cpu: 512
+          Memory: 1024
+          PortMappings:
+            - ContainerPort: 27017 # Puerto de MongoDB
+              Protocol: tcp
+          Essential: false
+          HealthCheck:
+            Command: ["CMD-SHELL", "mongosh --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 1)'"]
+            Interval: 30 # Intervalo entre comprobaciones de salud en segundos
+            Timeout: 5 # Tiempo máximo en segundos permitido para una comprobación de salud
+            Retries: 3 # Número de veces que se realizará la comprobación antes de declarar el contenedor como no saludable
+            StartPeriod: 60 # Tiempo en segundos para esperar antes de comenzar las comprobaciones de salud después del inicio del contenedor
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "/db/api-libros"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: "db"
+
+
+  Service: #Define como se ejecutan las tareas(contenedores) en un cluster 
+    Type: AWS::ECS::Service
+    DependsOn: ListenerRule
+    Properties:
+      ServiceName: api-libros-service
+      TaskDefinition: !Ref Task
+      Cluster: !ImportValue "ECSCluster"
+      LaunchType: FARGATE
+      DesiredCount: 2
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 70
+      NetworkConfiguration: # propiedad que asignara las subnets disponibles para desplegar los conetenedores
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !ImportValue Subnet1
+            - !ImportValue Subnet2
+          SecurityGroups:
+            - !ImportValue ContainerSecurityGroup
+      LoadBalancers:
+        - ContainerName: api-libros
+          ContainerPort: 3000
+          TargetGroupArn: !Ref TargetGroup
+          LoadBalancing: !ImportValue Listener #No se si esto va cambiarlo si no funciona despues !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  
+  TargetGroup: #Agrupa los servicios, contenedores, etc para que el balanceador de carga pueda enrutar el trafico hacia ellos
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: libros-tg
+      VpcId: !ImportValue VPC
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 10
+      TargetType: ip
+
+  ListenerRule: # Define reglas para enrutar el tráfico a diferentes destinos basándose en condiciones.
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !ImportValue Listener
+      Priority: 2
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /*
+      Actions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+
+  TaskLogGroupApi: #Log para el contenedor de la api
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /data/api-libros # Nombre del log group, se puede personalizar según tu preferencia
+      RetentionInDays: 7 # Cantidad de días que se retendrán los registros en el log group. Puedes ajustar esta cantidad según tus necesidades.
+
+  TaskLogGroupMongoDB: #Log para el contenedor de la base de datos 
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/db/api-libros" # Nombre del log group, se puede personalizar según tu preferencia
+      RetentionInDays: 7 # Cantidad de días que se retendrán los registros en el log group. Puedes ajustar esta cantidad según tus necesidades.
+
+Outputs: #outputs para exportar los diferentes servicios 
+  ApiEndpoint:
+    Description: Libros API Endpoint
+    Value: !Join ["", ["http://", !ImportValue DomainName]]
+    Export:
+      Name: "LibrosApiEndpoint"

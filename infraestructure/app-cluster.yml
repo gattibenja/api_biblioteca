@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: container cluster on ECS loadbalancer security groups and cloudwatch(logs)
+
+Resources:
+  
+  ECSCluster: #Creacion del cluster
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: 'api-libros-docker-ecs'
+
+  LoadBalancer: #Servicio para dirigir el trafico a diferentes regiones
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: ecs-services
+      Subnets:
+        - !ImportValue 'Subnet1'
+        - !ImportValue 'Subnet2'
+      SecurityGroups: #Decide que trafico puede entrar o salir
+        - !Ref LoadBalancerSecurityGroup 
+
+
+  LoadBalancerListener: #Configura un puerto y un protocolo para que el balanceador escuche el trafico  
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer #Indica a donde esta escuchando el puerto 
+      Protocol: HTTP
+      Port: 80
+      DefaultActions: #acciones que tomara por defecto 
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  LoadBalancerSecurityGroup: #Decide a que trafico va a escuchar
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for loadbalancer to services on ECS
+      VpcId: !ImportValue 'VPC'
+      SecurityGroupIngress: #Decide a que trafico puede escuchar
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  DefaultTargetGroup: # A donde enviara el trafico por defecto
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: default
+      VpcId: !ImportValue 'VPC'
+      Protocol: 'HTTP'
+      Port: '80'  
+
+  CloudWatchLogsGroup: #logs
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'apis'
+      RetentionInDays: 1
+
+  ContainerSecurityGroup: #Servicio para proteger a los contenedores en la vpc
+    Type: AWS::EC2::SecurityGroup      
+    Properties:
+      VpcId: !ImportValue 'VPC'
+      GroupDescription: for ecs containers
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref 'LoadBalancerSecurityGroup'
+          IpProtocol: -1
+
+Outputs: #outputs para exportar los diferentes servicios
+  
+  Cluster:
+    Value: !Ref ECSCluster
+    Export:
+      Name: 'ECSCluster'
+
+  Listener:
+    Description: listener port 80
+    Value: !Ref LoadBalancerListener
+    Export:
+      Name: 'Listener'
+
+  ContainerSecurityGroup:
+    Description: container security group
+    Value: !Ref ContainerSecurityGroup
+    Export:
+      Name: 'ContainerSecurityGroup'
+
+  LoadBalancerDNS:
+    Description: Domain name for the loadbalancer
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: 'DomainName'
